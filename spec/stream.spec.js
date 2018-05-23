@@ -2,16 +2,16 @@
 
 const _ = require('lodash');
 const fakeReader = require('./lib/fake_reader.js');
-const Terastream = require('../');
+const Stream = require('../');
 const { StreamEntity } = require('../');
 
-describe('Terastream', () => {
+describe('Stream', () => {
     describe('when constructed with a reader', () => {
         let sut;
         const batchSize = 100;
 
         beforeEach(() => {
-            sut = new Terastream(fakeReader(batchSize));
+            sut = new Stream(fakeReader(batchSize));
         });
 
         describe('->each', () => {
