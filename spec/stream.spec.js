@@ -1,19 +1,17 @@
 'use strict';
 
 const _ = require('lodash');
-const FakeReader = require('./lib/fake_reader.js');
-const Stream = require('../');
-const StreamEntity = require('../').StreamEntity;
+const fakeReader = require('./lib/fake_reader.js');
+const Terastream = require('../');
+const { StreamEntity } = require('../');
 
-describe('Steam', () => {
+describe('Terastream', () => {
     describe('when constructed with a reader', () => {
         let sut;
-        let reader;
         const batchSize = 100;
 
         beforeEach(() => {
-            reader = new FakeReader(batchSize);
-            sut = new Stream(reader);
+            sut = new Terastream(fakeReader(batchSize));
         });
 
         describe('->each', () => {
@@ -23,13 +21,7 @@ describe('Steam', () => {
                 sut.each((record) => {
                     records.push(record);
                 });
-                sut.done((err) => {
-                    if (err) {
-                        done(err);
-                        return;
-                    }
-                    done();
-                });
+                sut.done(done);
             });
             afterEach(() => {
                 records.length = 0;
@@ -59,6 +51,30 @@ describe('Steam', () => {
                     });
                 });
             });
+            describe('when paused mid-stream', () => {
+                it('should the stream still have the same result count', (done) => {
+                    const pauseAfter = _.after(_.random(1, batchSize), _.once(() => {
+                        sut.pause();
+                        _.delay(() => {
+                            sut.resume();
+                        }, 10);
+                    }));
+                    const records = [];
+                    sut.eachAsync((record, next) => {
+                        expect(sut.isPaused()).toBeFalse();
+                        records.push(record);
+                        setImmediate(() => {
+                            pauseAfter();
+                            next(null);
+                        });
+                    });
+                    sut.done((err) => {
+                        expect(err).toBeUndefined();
+                        expect(records).toBeArrayOfSize(batchSize);
+                        done();
+                    });
+                }, 5000);
+            });
             describe('when successful', () => {
                 const records = [];
                 beforeEach((done) => {
@@ -69,13 +85,7 @@ describe('Steam', () => {
                             next();
                         });
                     });
-                    sut.done((err) => {
-                        if (err) {
-                            done(err);
-                            return;
-                        }
-                        done();
-                    });
+                    sut.done(done);
                 });
                 afterEach(() => {
                     records.length = 0;
@@ -103,13 +113,7 @@ describe('Steam', () => {
                 sut.each((record) => {
                     records.push(record);
                 });
-                sut.done((err) => {
-                    if (err) {
-                        done(err);
-                        return;
-                    }
-                    done();
-                });
+                sut.done(done);
             });
             afterEach(() => {
                 records.length = 0;
@@ -146,6 +150,30 @@ describe('Steam', () => {
                     });
                 });
             });
+            describe('when paused mid-stream', () => {
+                it('should the stream still have the same result count', (done) => {
+                    const pauseAfter = _.after(_.random(1, batchSize), _.once(() => {
+                        sut.pause();
+                        _.delay(() => {
+                            sut.resume();
+                        }, 10);
+                    }));
+                    const records = [];
+                    sut.mapAsync((record, next) => {
+                        expect(sut.isPaused()).toBeFalse();
+                        records.push(record);
+                        setImmediate(() => {
+                            pauseAfter();
+                            next(null, record);
+                        });
+                    });
+                    sut.done((err) => {
+                        expect(err).toBeUndefined();
+                        expect(records).toBeArrayOfSize(batchSize);
+                        done();
+                    });
+                });
+            });
             describe('when successful', () => {
                 const records = [];
                 beforeEach((done) => {
@@ -159,13 +187,7 @@ describe('Steam', () => {
                     sut.each((record) => {
                         records.push(record);
                     });
-                    sut.done((err) => {
-                        if (err) {
-                            done(err);
-                            return;
-                        }
-                        done();
-                    });
+                    sut.done(done);
                 });
                 afterEach(() => {
                     records.length = 0;

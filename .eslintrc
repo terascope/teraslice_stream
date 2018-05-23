@@ -9,9 +9,22 @@
         "jasmine": true
     },
     "rules": {
-        "prefer-destructuring": "off",
         "no-underscore-dangle": "off",
         "indent": ["error", 4],
+        "no-shadow": [
+            "error",
+            {
+                "allow": [
+                    "resolve",
+                    "reject",
+                    "done",
+                    "cb",
+                    "callback",
+                    "err",
+                    "error"
+                ]
+            }
+        ],
         "no-param-reassign": ["error", { "props": false }],
         "no-use-before-define": ["error", { "functions": false }],
         "import/no-dynamic-require": "off",

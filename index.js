@@ -1,9 +1,9 @@
 'use strict';
 
-const Stream = require('./lib/stream');
+const Terastream = require('./lib/stream');
 const StreamEntity = require('./lib/stream_entity');
 
-module.exports = Stream;
+module.exports = Terastream;
 module.exports.StreamEntity = StreamEntity;
-module.exports.Stream = Stream;
+module.exports.Terastream = Terastream;
 
