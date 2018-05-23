@@ -37,43 +37,30 @@ describe('Stream', () => {
             });
         });
 
-        describe('->toArray', () => {
-            describe('when the stream errors', () => {
-                beforeEach(() => {
-                    let count = 0;
-                    const failAt = _.random(1, batchSize);
-                    sut.eachAsync((msg, next) => {
-                        count += 1;
-                        if (failAt === count) {
-                            next(new Error('Uh oh'));
-                        } else {
-                            next();
-                        }
-                    });
+        describe('->filter', () => {
+            const records = [];
+            beforeEach((done) => {
+                records.length = 0;
+                let count = 0;
+                sut.filter(() => {
+                    count += 1;
+                    return count % 2 === 0;
                 });
-                it('should yield an error', (done) => {
-                    sut.toArray((err) => {
-                        expect(_.toString(err)).toEqual('Error: Uh oh');
-                        done();
-                    });
+                sut.each((record) => {
+                    records.push(record);
                 });
+                sut.done(done);
             });
-            describe('when successful', () => {
-                let records = [];
-                beforeEach((done) => {
-                    sut.toArray((err, _records) => {
-                        records = _records;
-                        done(err);
-                    });
-                });
+            afterEach(() => {
+                records.length = 0;
+            });
 
-                it('should collect each item in the batch', () => {
-                    expect(records).toBeArrayOfSize(batchSize);
-                });
-                it('should each record should a stream entity', () => {
-                    _.each(records, (record) => {
-                        expect(record).toEqual(jasmine.any(StreamEntity));
-                    });
+            it('should collect half of the items in the batch', () => {
+                expect(records).toBeArrayOfSize(batchSize / 2);
+            });
+            it('should each record should a stream entity', () => {
+                _.each(records, (record) => {
+                    expect(record).toEqual(jasmine.any(StreamEntity));
                 });
             });
         });
@@ -245,6 +232,46 @@ describe('Stream', () => {
                 it('should have the the records with the properly new field', () => {
                     _.forEach(records, (record) => {
                         expect(record.processed).toBeTrue();
+                    });
+                });
+            });
+        });
+        describe('->toArray', () => {
+            describe('when the stream errors', () => {
+                beforeEach(() => {
+                    let count = 0;
+                    const failAt = _.random(1, batchSize);
+                    sut.eachAsync((msg, next) => {
+                        count += 1;
+                        if (failAt === count) {
+                            next(new Error('Uh oh'));
+                        } else {
+                            next();
+                        }
+                    });
+                });
+                it('should yield an error', (done) => {
+                    sut.toArray((err) => {
+                        expect(_.toString(err)).toEqual('Error: Uh oh');
+                        done();
+                    });
+                });
+            });
+            describe('when successful', () => {
+                let records = [];
+                beforeEach((done) => {
+                    sut.toArray((err, _records) => {
+                        records = _records;
+                        done(err);
+                    });
+                });
+
+                it('should collect each item in the batch', () => {
+                    expect(records).toBeArrayOfSize(batchSize);
+                });
+                it('should each record should a stream entity', () => {
+                    _.each(records, (record) => {
+                        expect(record).toEqual(jasmine.any(StreamEntity));
                     });
                 });
             });
