@@ -236,6 +236,7 @@ describe('Stream', () => {
                 });
             });
         });
+
         describe('->toArray', () => {
             describe('when the stream errors', () => {
                 beforeEach(() => {
