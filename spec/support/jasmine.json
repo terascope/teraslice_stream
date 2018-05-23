@@ -1,0 +1,12 @@
+{
+  "spec_dir": "spec",
+  "spec_files": [
+    "**/*[Ss]pec.js"
+  ],
+  "random": false,
+  "stopSpecOnExpectationFailure": false,
+  "helpers": [
+    "support/configure_reporter.js",
+    "../node_modules/jasmine-expect/index.js"
+  ]
+}

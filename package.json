@@ -1,0 +1,39 @@
+{
+  "name": "terastreams",
+  "version": "1.0.0",
+  "description": "Functional streams for teraslice",
+  "main": "index.js",
+  "scripts": {
+    "test": "jasmine"
+  },
+  "keywords": [
+    "teraslice",
+    "streams",
+    "kafka",
+    "elasticsearch",
+    "functional",
+    "async"
+  ],
+  "author": "Peter DeMartini <peter@terascope.io>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/highland": "^2.10.8",
+    "@types/jasmine": "^2.8.7",
+    "@types/jasmine-expect": "^3.8.1",
+    "@types/lodash": "^4.14.109",
+    "eslint": "^4.19.1",
+    "eslint-config-airbnb": "^16.1.0",
+    "eslint-plugin-import": "^2.12.0",
+    "eslint-plugin-jsx-a11y": "^6.0.3",
+    "eslint-plugin-react": "^7.8.2",
+    "jasmine": "^3.1.0",
+    "jasmine-expect": "^3.8.3",
+    "jasmine-spec-reporter": "^4.2.1"
+  },
+  "dependencies": {
+    "auto-bind": "^1.2.0",
+    "highland": "^3.0.0-beta.6",
+    "lodash": "^4.17.10",
+    "uuid": "^3.2.1"
+  }
+}
