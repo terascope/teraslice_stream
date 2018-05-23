@@ -37,6 +37,47 @@ describe('Stream', () => {
             });
         });
 
+        describe('->toArray', () => {
+            describe('when the stream errors', () => {
+                beforeEach(() => {
+                    let count = 0;
+                    const failAt = _.random(1, batchSize);
+                    sut.eachAsync((msg, next) => {
+                        count += 1;
+                        if (failAt === count) {
+                            next(new Error('Uh oh'));
+                        } else {
+                            next();
+                        }
+                    });
+                });
+                it('should yield an error', (done) => {
+                    sut.toArray((err) => {
+                        expect(_.toString(err)).toEqual('Error: Uh oh');
+                        done();
+                    });
+                });
+            });
+            describe('when successful', () => {
+                let records = [];
+                beforeEach((done) => {
+                    sut.toArray((err, _records) => {
+                        records = _records;
+                        done(err);
+                    });
+                });
+
+                it('should collect each item in the batch', () => {
+                    expect(records).toBeArrayOfSize(batchSize);
+                });
+                it('should each record should a stream entity', () => {
+                    _.each(records, (record) => {
+                        expect(record).toEqual(jasmine.any(StreamEntity));
+                    });
+                });
+            });
+        });
+
         describe('->eachAsync', () => {
             describe('when handling errors', () => {
                 it('should the stream should fail', (done) => {
@@ -69,7 +110,7 @@ describe('Stream', () => {
                         });
                     });
                     sut.done((err) => {
-                        expect(err).toBeUndefined();
+                        expect(err).toBeFalsy();
                         expect(records).toBeArrayOfSize(batchSize);
                         done();
                     });
@@ -168,7 +209,7 @@ describe('Stream', () => {
                         });
                     });
                     sut.done((err) => {
-                        expect(err).toBeUndefined();
+                        expect(err).toBeFalsy();
                         expect(records).toBeArrayOfSize(batchSize);
                         done();
                     });
@@ -210,4 +251,3 @@ describe('Stream', () => {
         });
     });
 });
-
