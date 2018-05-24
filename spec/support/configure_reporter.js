@@ -1,6 +1,6 @@
 'use strict';
 
-const SpecReporter = require('jasmine-spec-reporter').SpecReporter;
+const { SpecReporter } = require('jasmine-spec-reporter');
 
 jasmine.getEnv().addReporter(new SpecReporter({
     summary: {

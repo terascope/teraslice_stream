@@ -1,5 +1,6 @@
 'use strict';
 
+const Promise = require('bluebird');
 const _ = require('lodash');
 const fakeReader = require('./lib/fake_reader.js');
 const {
@@ -20,38 +21,65 @@ describe('Stream', () => {
         });
 
         describe('->done', () => {
-            it('should return a teraslice stream', () => {
-                expect(isStream(sut.done(_.noop))).toBeTrue();
-            });
-            describe('when the stream errors', () => {
-                beforeEach(() => {
-                    let count = 0;
-                    const failAt = _.random(1, batchSize);
-                    sut.eachAsync((msg, next) => {
-                        count += 1;
-                        if (failAt === count) {
-                            next(new Error('Uh oh'));
-                        } else {
-                            next();
-                        }
+            describe('when given a callback', () => {
+                it('should return a teraslice stream', () => {
+                    expect(isStream(sut.done(_.noop))).toBeTrue();
+                });
+                describe('when the stream errors', () => {
+                    beforeEach(() => {
+                        let count = 0;
+                        const failAt = _.random(1, batchSize);
+                        sut.eachAsync((msg, next) => {
+                            count += 1;
+                            if (failAt === count) {
+                                next(new Error('Uh oh'));
+                            } else {
+                                next();
+                            }
+                        });
+                    });
+                    it('should yield an error', (done) => {
+                        sut.done((err) => {
+                            expect(_.toString(err)).toEqual('Error: Uh oh');
+                            done();
+                        });
                     });
                 });
-                it('should yield an error', (done) => {
-                    sut.done((err) => {
-                        expect(_.toString(err)).toEqual('Error: Uh oh');
+                it('when successful', (done) => {
+                    sut.done((err, results) => {
+                        if (err) {
+                            done(err);
+                            return;
+                        }
+                        expect(results).toBeUndefined();
                         done();
                     });
                 });
             });
-            it('when successful', (done) => {
-                sut.done((err, results) => {
-                    if (err) {
-                        done(err);
-                        return;
-                    }
-                    expect(results).toBeUndefined();
-                    done();
+            describe('when not given a callback', () => {
+                it('should return a promise', () => {
+                    expect(sut.done() instanceof Promise).toBe(true);
                 });
+                describe('when the stream errors', () => {
+                    beforeEach(() => {
+                        let count = 0;
+                        const failAt = _.random(1, batchSize);
+                        sut.eachAsync((msg, next) => {
+                            count += 1;
+                            if (failAt === count) {
+                                next(new Error('Uh oh'));
+                            } else {
+                                next();
+                            }
+                        });
+                    });
+                    it('should reject with an error', () => sut.done().catch((err) => {
+                        expect(_.toString(err)).toEqual('Error: Uh oh');
+                    }));
+                });
+                it('when successful', () => sut.done().then((results) => {
+                    expect(results).toBeNull();
+                }));
             });
         });
 
@@ -190,6 +218,25 @@ describe('Stream', () => {
                     });
                 });
             });
+
+            it('should work when chained with done', (done) => {
+                sut.eachAsync((record, next) => {
+                    setImmediate(() => {
+                        next();
+                    });
+                }).done(done);
+            });
+
+            it('should work when chained with toArray', (done) => {
+                sut.eachAsync((record, next) => {
+                    setImmediate(() => {
+                        next();
+                    });
+                }).toArray((err, results) => {
+                    expect(results).toBeArrayOfSize(0);
+                    done(err);
+                });
+            });
         });
 
         describe('->map', () => {
@@ -308,48 +355,106 @@ describe('Stream', () => {
                     });
                 });
             });
+            it('should work when chained with done', (done) => {
+                sut.mapAsync((record, next) => {
+                    setImmediate(() => {
+                        next(null, record);
+                    });
+                }).done(done);
+            });
+
+            it('should work when chained with toArray', (done) => {
+                sut.mapAsync((record, next) => {
+                    setImmediate(() => {
+                        next(null, record);
+                    });
+                }).toArray((err, results) => {
+                    expect(results).toBeArrayOfSize(batchSize);
+                    done(err);
+                });
+            });
         });
 
         describe('->toArray', () => {
-            it('should return a teraslice stream', () => {
-                expect(isStream(sut.toArray(_.noop))).toBeTrue();
-            });
-            describe('when the stream errors', () => {
-                beforeEach(() => {
-                    let count = 0;
-                    const failAt = _.random(1, batchSize);
-                    sut.eachAsync((msg, next) => {
-                        count += 1;
-                        if (failAt === count) {
-                            next(new Error('Uh oh'));
-                        } else {
-                            next();
-                        }
+            describe('when given a callback', () => {
+                it('should return a teraslice stream', () => {
+                    expect(isStream(sut.toArray(_.noop))).toBeTrue();
+                });
+                describe('when the stream errors', () => {
+                    beforeEach(() => {
+                        let count = 0;
+                        const failAt = _.random(1, batchSize);
+                        sut.eachAsync((msg, next) => {
+                            count += 1;
+                            if (failAt === count) {
+                                next(new Error('Uh oh'));
+                            } else {
+                                next();
+                            }
+                        });
+                    });
+                    it('should yield an error', (done) => {
+                        sut.toArray((err) => {
+                            expect(_.toString(err)).toEqual('Error: Uh oh');
+                            done();
+                        });
                     });
                 });
-                it('should yield an error', (done) => {
-                    sut.toArray((err) => {
-                        expect(_.toString(err)).toEqual('Error: Uh oh');
-                        done();
+                describe('when successful', () => {
+                    let records;
+                    beforeEach((done) => {
+                        sut.toArray((err, _records) => {
+                            records = _records;
+                            done(err);
+                        });
                     });
-                });
-            });
-            describe('when successful', () => {
-                let records = [];
-                beforeEach((done) => {
-                    sut.toArray((err, _records) => {
-                        records = _records;
-                        done(err);
-                    });
-                });
 
-                it('should collect each item in the batch', () => {
-                    expect(records).toBeArrayOfSize(batchSize);
+                    it('should collect each item in the batch', () => {
+                        expect(records).toBeArrayOfSize(batchSize);
+                    });
+                    it('should each record should a stream entity', () => {
+                        _.each(records, (record) => {
+                            expect(record).toEqual(jasmine.any(StreamEntity));
+                            expect(isStreamEntity(record)).toBeTrue();
+                        });
+                    });
                 });
-                it('should each record should a stream entity', () => {
-                    _.each(records, (record) => {
-                        expect(record).toEqual(jasmine.any(StreamEntity));
-                        expect(isStreamEntity(record)).toBeTrue();
+            });
+            describe('when not given a callback', () => {
+                it('should return a promise', () => {
+                    expect(sut.toArray() instanceof Promise).toBe(true);
+                });
+                describe('when the stream errors', () => {
+                    beforeEach(() => {
+                        let count = 0;
+                        const failAt = _.random(1, batchSize);
+                        sut.eachAsync((msg, next) => {
+                            count += 1;
+                            if (failAt === count) {
+                                next(new Error('Uh oh'));
+                            } else {
+                                next();
+                            }
+                        });
+                    });
+                    it('should reject with an error', () => sut.toArray().catch((err) => {
+                        expect(_.toString(err)).toEqual('Error: Uh oh');
+                    }));
+                });
+                describe('when successful', () => {
+                    let records;
+                    beforeEach(() => sut.toArray().then((_records) => {
+                        records = _records;
+                    }));
+
+                    it('should collect each item in the batch', () => {
+                        expect(records).toBeArrayOfSize(batchSize);
+                    });
+                    it('should each record should a stream entity', () => {
+                        _.each(records, (record) => {
+                            expect(record).toEqual(jasmine.any(StreamEntity));
+                            expect(isStreamEntity(record)).toBeTrue();
+                        });
                     });
                 });
             });

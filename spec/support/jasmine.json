@@ -3,9 +3,8 @@
   "spec_files": [
     "**/*[sS]pec.js"
   ],
-  "failFast": true,
+  "stopOnSpecFailure": true,
   "random": false,
-  "stopSpecOnExpectationFailure": false,
   "helpers": [
     "support/configure_reporter.js",
     "../node_modules/jasmine-expect/index.js",
