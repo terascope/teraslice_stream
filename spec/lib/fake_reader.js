@@ -1,17 +1,16 @@
 'use strict';
 
 const _ = require('lodash');
-const H = require('highland');
-const { StreamEntity } = require('../../');
+const { StreamSource } = require('../../');
 
 module.exports = function fakeReader(batchSize) {
-    const stream = H();
+    const stream = new StreamSource();
     const done = _.after(batchSize, () => {
         stream.end();
     });
     _.times(batchSize, (i) => {
         _.delay(() => {
-            stream.write(new StreamEntity({ ms: i }));
+            stream.write({ ms: i });
             done();
         }, i * 2);
     });
