@@ -459,5 +459,88 @@ describe('Stream', () => {
                 });
             });
         });
+        describe('->toStream', () => {
+            describe('when given a callback', () => {
+                it('should return a teraslice stream', () => {
+                    expect(isStream(sut.toStream(_.noop))).toBeTrue();
+                });
+                describe('when the stream errors', () => {
+                    beforeEach(() => {
+                        let count = 0;
+                        const failAt = _.random(1, batchSize);
+                        sut.eachAsync((msg, next) => {
+                            count += 1;
+                            if (failAt === count) {
+                                next(new Error('Uh oh'));
+                            } else {
+                                next();
+                            }
+                        });
+                    });
+                    it('should yield an error', (done) => {
+                        sut.toStream((err) => {
+                            expect(_.toString(err)).toEqual('Error: Uh oh');
+                            done();
+                        });
+                    });
+                });
+                describe('when successful', () => {
+                    let stream;
+                    beforeEach((done) => {
+                        sut.toStream((err, _stream) => {
+                            stream = _stream;
+                            done(err);
+                        });
+                    });
+
+                    it('should resolve a stream with all of the records', (done) => {
+                        expect(isStream(stream)).toBeTrue();
+                        return stream.toArray((err, records) => {
+                            if (err) {
+                                done(err);
+                                return;
+                            }
+                            expect(records).toBeArrayOfSize(batchSize);
+                            done();
+                        });
+                    });
+                });
+            });
+            describe('when not given a callback', () => {
+                it('should return a promise', () => {
+                    expect(sut.toStream() instanceof Promise).toBe(true);
+                });
+                describe('when the stream errors', () => {
+                    beforeEach(() => {
+                        let count = 0;
+                        const failAt = _.random(1, batchSize);
+                        sut.eachAsync((msg, next) => {
+                            count += 1;
+                            if (failAt === count) {
+                                next(new Error('Uh oh'));
+                            } else {
+                                next();
+                            }
+                        });
+                    });
+                    it('should reject with an error', () => sut.toStream().catch((err) => {
+                        expect(_.toString(err)).toEqual('Error: Uh oh');
+                    }));
+                });
+                describe('when successful', () => {
+                    let stream;
+                    beforeEach(() => sut.toStream().then((_stream) => {
+                        stream = _stream;
+                    }));
+
+                    it('should resolve a stream with all of the records', () => {
+                        expect(isStream(stream)).toBeTrue();
+                        return stream.toArray().then((records) => {
+                            expect(records).toBeArrayOfSize(batchSize);
+                        });
+                    });
+                });
+            });
+        });
     });
 });
