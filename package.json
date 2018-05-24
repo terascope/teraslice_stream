@@ -1,5 +1,5 @@
 {
-  "name": "teraslice-stream",
+  "name": "teraslice_stream",
   "version": "1.0.0",
   "description": "Functional streams for teraslice",
   "main": "index.js",
