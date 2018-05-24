@@ -2,8 +2,9 @@
 
 const _ = require('lodash');
 const fakeReader = require('./lib/fake_reader.js');
-const Stream = require('../');
-const { StreamEntity } = require('../');
+const {
+    Stream, StreamEntity, isStream, isStreamEntity
+} = require('../');
 
 describe('Stream', () => {
     describe('when constructed with a reader', () => {
@@ -14,58 +15,118 @@ describe('Stream', () => {
             sut = new Stream(fakeReader(batchSize));
         });
 
-        describe('->each', () => {
-            const records = [];
-            beforeEach((done) => {
-                records.length = 0;
-                sut.each((record) => {
-                    records.push(record);
-                });
-                sut.done(done);
+        it('should be a stream', () => {
+            expect(isStream(sut)).toBeTrue();
+        });
+
+        describe('->done', () => {
+            it('should return a teraslice stream', () => {
+                expect(isStream(sut.done(_.noop))).toBeTrue();
             });
-            afterEach(() => {
-                records.length = 0;
+            describe('when the stream errors', () => {
+                beforeEach(() => {
+                    let count = 0;
+                    const failAt = _.random(1, batchSize);
+                    sut.eachAsync((msg, next) => {
+                        count += 1;
+                        if (failAt === count) {
+                            next(new Error('Uh oh'));
+                        } else {
+                            next();
+                        }
+                    });
+                });
+                it('should yield an error', (done) => {
+                    sut.done((err) => {
+                        expect(_.toString(err)).toEqual('Error: Uh oh');
+                        done();
+                    });
+                });
+            });
+            it('when successful', (done) => {
+                sut.done((err, results) => {
+                    if (err) {
+                        done(err);
+                        return;
+                    }
+                    expect(results).toBeUndefined();
+                    done();
+                });
+            });
+        });
+
+        describe('->each', () => {
+            it('should return a teraslice stream', () => {
+                expect(isStream(sut.each(_.noop))).toBeTrue();
             });
 
-            it('should collect each item in the batch', () => {
-                expect(records).toBeArrayOfSize(batchSize);
-            });
-            it('should each record should a stream entity', () => {
-                _.each(records, (record) => {
-                    expect(record).toEqual(jasmine.any(StreamEntity));
+            describe('when successful', () => {
+                const records = [];
+
+                beforeEach((done) => {
+                    records.length = 0;
+                    sut.each((record) => {
+                        records.push(record);
+                    });
+                    sut.done(done);
+                });
+
+                afterEach(() => {
+                    records.length = 0;
+                });
+
+                it('should collect each item in the batch', () => {
+                    expect(records).toBeArrayOfSize(batchSize);
+                });
+
+                it('should each record should a stream entity', () => {
+                    _.each(records, (record) => {
+                        expect(record).toEqual(jasmine.any(StreamEntity));
+                        expect(isStreamEntity(record)).toBeTrue();
+                    });
                 });
             });
         });
 
         describe('->filter', () => {
-            const records = [];
-            beforeEach((done) => {
-                records.length = 0;
-                let count = 0;
-                sut.filter(() => {
-                    count += 1;
-                    return count % 2 === 0;
-                });
-                sut.each((record) => {
-                    records.push(record);
-                });
-                sut.done(done);
-            });
-            afterEach(() => {
-                records.length = 0;
+            it('should return a teraslice stream', () => {
+                expect(isStream(sut.filter(_.noop))).toBeTrue();
             });
 
-            it('should collect half of the items in the batch', () => {
-                expect(records).toBeArrayOfSize(batchSize / 2);
-            });
-            it('should each record should a stream entity', () => {
-                _.each(records, (record) => {
-                    expect(record).toEqual(jasmine.any(StreamEntity));
+            describe('when successful', () => {
+                const records = [];
+                beforeEach((done) => {
+                    records.length = 0;
+                    let count = 0;
+                    sut.filter(() => {
+                        count += 1;
+                        return count % 2 === 0;
+                    });
+                    sut.each((record) => {
+                        records.push(record);
+                    });
+                    sut.done(done);
+                });
+                afterEach(() => {
+                    records.length = 0;
+                });
+
+                it('should collect half of the items in the batch', () => {
+                    expect(records).toBeArrayOfSize(batchSize / 2);
+                });
+                it('should each record should a stream entity', () => {
+                    _.each(records, (record) => {
+                        expect(record).toEqual(jasmine.any(StreamEntity));
+                        expect(isStreamEntity(record)).toBeTrue();
+                    });
                 });
             });
         });
 
         describe('->eachAsync', () => {
+            it('should return a teraslice stream', () => {
+                expect(isStream(sut.eachAsync(_.noop))).toBeTrue();
+            });
             describe('when handling errors', () => {
                 it('should the stream should fail', (done) => {
                     sut.eachAsync((record, next) => {
@@ -125,46 +186,57 @@ describe('Stream', () => {
                 it('should each record should a stream entity', () => {
                     _.each(records, (record) => {
                         expect(record).toEqual(jasmine.any(StreamEntity));
+                        expect(isStreamEntity(record)).toBeTrue();
                     });
                 });
             });
         });
 
         describe('->map', () => {
-            const records = [];
-            beforeEach((done) => {
-                records.length = 0;
-                sut.map((record) => {
-                    record.processed = true;
-                    return record;
-                });
-                sut.each((record) => {
-                    records.push(record);
-                });
-                sut.done(done);
-            });
-            afterEach(() => {
-                records.length = 0;
+            it('should return a teraslice stream', () => {
+                expect(isStream(sut.map(_.noop))).toBeTrue();
             });
 
-            it('should collect each item in the batch', () => {
-                expect(records).toBeArrayOfSize(batchSize);
-            });
-
-            it('should each record should a stream entity', () => {
-                _.each(records, (record) => {
-                    expect(record).toEqual(jasmine.any(StreamEntity));
+            describe('when successful', () => {
+                const records = [];
+                beforeEach((done) => {
+                    records.length = 0;
+                    sut.map((record) => {
+                        record.processed = true;
+                        return record;
+                    });
+                    sut.each((record) => {
+                        records.push(record);
+                    });
+                    sut.done(done);
                 });
-            });
+                afterEach(() => {
+                    records.length = 0;
+                });
 
-            it('should have the the records with the properly new field', () => {
-                _.forEach(records, (record) => {
-                    expect(record.processed).toBeTrue();
+                it('should collect each item in the batch', () => {
+                    expect(records).toBeArrayOfSize(batchSize);
+                });
+
+                it('should each record should a stream entity', () => {
+                    _.each(records, (record) => {
+                        expect(record).toEqual(jasmine.any(StreamEntity));
+                        expect(isStreamEntity(record)).toBeTrue();
+                    });
+                });
+
+                it('should have the the records with the properly new field', () => {
+                    _.forEach(records, (record) => {
+                        expect(record.processed).toBeTrue();
+                    });
                 });
             });
         });
 
         describe('->mapAsync', () => {
+            it('should return a teraslice stream', () => {
+                expect(isStream(sut.mapAsync(_.noop))).toBeTrue();
+            });
             describe('when handling errors', () => {
                 it('should the stream should fail', (done) => {
                     sut.mapAsync((record, next) => {
@@ -227,6 +299,7 @@ describe('Stream', () => {
                 it('should each record should a stream entity', () => {
                     _.each(records, (record) => {
                         expect(record).toEqual(jasmine.any(StreamEntity));
+                        expect(isStreamEntity(record)).toBeTrue();
                     });
                 });
                 it('should have the the records with the properly new field', () => {
@@ -238,6 +311,9 @@ describe('Stream', () => {
         });
 
         describe('->toArray', () => {
+            it('should return a teraslice stream', () => {
+                expect(isStream(sut.toArray(_.noop))).toBeTrue();
+            });
             describe('when the stream errors', () => {
                 beforeEach(() => {
                     let count = 0;
@@ -273,6 +349,7 @@ describe('Stream', () => {
                 it('should each record should a stream entity', () => {
                     _.each(records, (record) => {
                         expect(record).toEqual(jasmine.any(StreamEntity));
+                        expect(isStreamEntity(record)).toBeTrue();
                     });
                 });
             });
