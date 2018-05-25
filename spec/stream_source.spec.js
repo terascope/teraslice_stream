@@ -137,18 +137,46 @@ describe('StreamSource', () => {
             sut.destroy();
         });
 
-        it('should throw an error if given null', () => {
-            expect(() => sut.write(null)).toThrowError('StreamEntity requires data to be any of the following types a Buffer, Object, Array, or String');
+        describe('when writing null', () => {
+            it('should throw an error', () => {
+                expect(() => sut.write(null)).toThrowError('StreamEntity requires data to be any of the following types a Buffer, Object, Array, or String');
+            });
         });
 
-        it('should return a stream entity if given an object', () => {
-            const result = sut.write({ hello: 'hi' });
-            expect(isStreamEntity(result)).toBeTrue();
+        describe('when writing an object', () => {
+            it('should return a stream entity', () => {
+                const result = sut.write({ hello: 'hi' });
+                expect(isStreamEntity(result)).toBeTrue();
+            });
         });
 
-        it('should return false if the stream is paused', () => {
-            sut.pause();
-            expect(sut.write({ hello: 'hi' })).toBeFalse();
+        describe('when writing an string', () => {
+            fit('should return a stream entity', () => {
+                const result = sut.write('hello');
+                expect(isStreamEntity(result)).toBeTrue();
+            });
+        });
+
+        describe('when writing an error', () => {
+            fit('should cause the stream to emit an error', () => {
+                sut.write('hello');
+                setImmediate(() => {
+                    expect(sut.write(new Error('Uh oh'))).toBeTrue();
+                    sut.end();
+                });
+                return sut.toStream().collect().toPromise(Promise).then(() => Promise.reject(new Error('Expected stream not to resolve')))
+                    .catch((err) => {
+                        expect(err.message).toEqual('Uh oh');
+                        return Promise.resolve();
+                    });
+            });
+        });
+
+        describe('when the stream is paused', () => {
+            it('should return false', () => {
+                sut.pause();
+                expect(sut.write({ hello: 'hi' })).toBeFalse();
+            });
         });
     });
 });
