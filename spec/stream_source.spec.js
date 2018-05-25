@@ -16,7 +16,11 @@ describe('StreamSource', () => {
         it('should not fail if given an array of Stream Entity', (done) => {
             const input = [new StreamEntity({ id: 'hello' }), new StreamEntity({ id: 'hi' })];
             const sut = new StreamSource(input);
-            sut.toStream().toArray((results) => {
+            sut.toStream().toArray((err, results) => {
+                if (err) {
+                    done(err);
+                    return;
+                }
                 expect(results[0].toJSON().id).toEqual('hello');
                 expect(results[1].toJSON().id).toEqual('hi');
                 sut.destroy();
@@ -151,20 +155,20 @@ describe('StreamSource', () => {
         });
 
         describe('when writing an string', () => {
-            fit('should return a stream entity', () => {
+            it('should return a stream entity', () => {
                 const result = sut.write('hello');
                 expect(isStreamEntity(result)).toBeTrue();
             });
         });
 
         describe('when writing an error', () => {
-            fit('should cause the stream to emit an error', () => {
+            it('should cause the stream to emit an error', () => {
                 sut.write('hello');
                 setImmediate(() => {
                     expect(sut.write(new Error('Uh oh'))).toBeTrue();
                     sut.end();
                 });
-                return sut.toStream().collect().toPromise(Promise).then(() => Promise.reject(new Error('Expected stream not to resolve')))
+                return sut.toStream().done().then(() => Promise.reject(new Error('Expected stream not to resolve')))
                     .catch((err) => {
                         expect(err.message).toEqual('Uh oh');
                         return Promise.resolve();
