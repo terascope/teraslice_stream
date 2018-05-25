@@ -50,10 +50,18 @@ describe('StreamSource', () => {
             expect(sut.count).toEqual(0);
         });
 
-        it('should increment with each write', () => {
+        it('should increment with each write', (done) => {
+            const after = _.after(100, done);
             _.times(100, (i) => {
                 const count = i + 1;
-                expect(sut.write({ count })).toBeTruthy();
+                sut.write({ count }, (err, result) => {
+                    if (err) {
+                        done(err);
+                        return;
+                    }
+                    expect(result).toBeTruthy();
+                    after();
+                });
                 expect(sut.count).toEqual(count);
             });
         });
@@ -73,16 +81,23 @@ describe('StreamSource', () => {
             expect(sut.isEnded()).toBeFalse();
         });
 
-        it('should be ended after writing 100 records', () => {
+        it('should be ended after writing 100 records', (done) => {
             sut.resume();
             const after = _.after(100, () => {
                 sut.end();
                 expect(sut.isEnded()).toBeTrue();
+                done();
             });
+            expect(sut.isEnded()).toBeFalse();
             _.times(100, (i) => {
-                expect(sut.write({ i })).toBeTruthy();
-                expect(sut.isEnded()).toBeFalse();
-                after();
+                sut.write({ i }, (err, result) => {
+                    if (err) {
+                        done(err);
+                        return;
+                    }
+                    expect(result).toBeTruthy();
+                    after();
+                });
             });
         });
     });
@@ -98,34 +113,56 @@ describe('StreamSource', () => {
         });
 
         it('should be paused before it begins', () => {
-            sut.write({ i: 1 });
             expect(sut.isPaused()).toBeTrue();
+            sut.write({ i: 1 }, _.noop);
         });
 
-        it('should be paused after writing 100 records', () => {
-            sut.resume();
-            const after = _.after(100, () => {
+        it('should be paused after writing 100 records', (done) => {
+            const after = _.after(99, () => {
                 sut.end();
-                expect(sut.isEnded()).toBeTrue();
                 expect(sut.isPaused()).toBeTrue();
+                done();
             });
-            _.times(100, (i) => {
-                expect(sut.write({ i })).toBeTruthy();
+            sut.resume();
+            sut.write({ i: 1 }, (err, firstResult) => {
+                if (err) {
+                    done(err);
+                    return;
+                }
                 expect(sut.isPaused()).toBeFalse();
-                after();
+                expect(firstResult).toBeTruthy();
+                _.times(99, (i) => {
+                    sut.write({ i }, (err, result) => {
+                        if (err) {
+                            done(err);
+                            return;
+                        }
+                        expect(result).toBeTruthy();
+                        after();
+                    });
+                });
             });
         });
 
-        it('should be paused after pausing', () => {
+        it('should be paused after pausing', (done) => {
             sut.resume();
             const after = _.after(50, _.once(() => {
                 sut.pause();
                 expect(sut.isPaused()).toBeTrue();
+                done();
             }));
             _.times(50, (i) => {
-                expect(sut.write({ i })).toBeTruthy();
-                expect(sut.isPaused()).toBeFalse();
-                after();
+                sut.write({ i }, (err, result) => {
+                    if (err) {
+                        done(err);
+                        return;
+                    }
+                    if (i === 1) {
+                        expect(sut.isPaused()).toBeFalse();
+                    }
+                    expect(result).toBeTruthy();
+                    after();
+                });
             });
         });
     });
@@ -142,31 +179,63 @@ describe('StreamSource', () => {
         });
 
         describe('when writing null', () => {
+            it('should yield an error', (done) => {
+                sut.write(null, (err) => {
+                    expect(err.message).toEqual('StreamSource->write() requires data to be any of the following types a Buffer, Object, Array, or String');
+                    done();
+                });
+            });
+        });
+
+        describe('when writing without a callback', () => {
             it('should throw an error', () => {
-                expect(() => sut.write(null)).toThrowError('StreamEntity requires data to be any of the following types a Buffer, Object, Array, or String');
+                expect(() => sut.write({ hello: true })).toThrowError('StreamSource->write() requires a callback');
             });
         });
 
         describe('when writing an object', () => {
-            it('should return a stream entity', () => {
-                const result = sut.write({ hello: 'hi' });
-                expect(isStreamEntity(result)).toBeTrue();
+            it('should return a stream entity', (done) => {
+                sut.write({ hello: 'hi' }, (err, result) => {
+                    if (err) {
+                        done(err);
+                        return;
+                    }
+                    expect(isStreamEntity(result)).toBeTrue();
+                    done();
+                });
             });
         });
 
         describe('when writing an string', () => {
-            it('should return a stream entity', () => {
-                const result = sut.write('hello');
-                expect(isStreamEntity(result)).toBeTrue();
+            it('should return a stream entity', (done) => {
+                sut.write('hello', (err, result) => {
+                    if (err) {
+                        done(err);
+                        return;
+                    }
+                    expect(isStreamEntity(result)).toBeTrue();
+                    done();
+                });
             });
         });
 
         describe('when writing an error', () => {
-            it('should cause the stream to emit an error', () => {
-                sut.write('hello');
+            it('should cause the stream to emit an error', (done) => {
+                sut.write('hello', (err) => {
+                    if (err) {
+                        done(err);
+                    }
+                });
                 setImmediate(() => {
-                    expect(sut.write(new Error('Uh oh'))).toBeTrue();
-                    sut.end();
+                    sut.write(new Error('Uh oh'), (err, result) => {
+                        if (err) {
+                            done(err);
+                            return;
+                        }
+                        expect(result).toBeUndefined();
+                        sut.end();
+                        done();
+                    });
                 });
                 return sut.toStream().done().then(() => Promise.reject(new Error('Expected stream not to resolve')))
                     .catch((err) => {
@@ -177,9 +246,11 @@ describe('StreamSource', () => {
         });
 
         describe('when the stream is paused', () => {
-            it('should return false', () => {
-                sut.pause();
-                expect(sut.write({ hello: 'hi' })).toBeFalse();
+            it('should return false', (done) => {
+                sut.write({ hello: 'hi' }, (err) => {
+                    expect(err.message).toEqual('Unable to write to stream');
+                    done();
+                });
             });
         });
     });

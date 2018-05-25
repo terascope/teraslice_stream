@@ -4,7 +4,7 @@ const Promise = require('bluebird');
 const _ = require('lodash');
 const fakeReader = require('./lib/fake_reader.js');
 const {
-    Stream, StreamEntity, isStream, isStreamEntity
+    StreamEntity, isStream, isStreamEntity
 } = require('../');
 
 describe('Stream', () => {
@@ -13,7 +13,7 @@ describe('Stream', () => {
         const batchSize = 100;
 
         beforeEach(() => {
-            sut = new Stream(fakeReader(batchSize));
+            sut = fakeReader(batchSize).toStream();
         });
 
         it('should be a stream', () => {
@@ -151,7 +151,7 @@ describe('Stream', () => {
             });
         });
 
-        describe('->eachAsync', () => {
+        fdescribe('->eachAsync', () => {
             it('should return a teraslice stream', () => {
                 expect(isStream(sut.eachAsync(_.noop))).toBeTrue();
             });
@@ -170,23 +170,27 @@ describe('Stream', () => {
             });
             describe('when paused mid-stream', () => {
                 it('should the stream still have the same result count', (done) => {
-                    const pauseAfter = _.after(_.random(1, batchSize), _.once(() => {
-                        sut.pause();
-                        _.delay(() => {
-                            sut.resume();
-                        }, 10);
-                    }));
                     const records = [];
                     sut.eachAsync((record, next) => {
                         expect(sut.isPaused()).toBeFalse();
                         records.push(record);
                         setImmediate(() => {
-                            pauseAfter();
+                            if (_.size(records) === 10) {
+                                sut.pause();
+                                _.delay(() => {
+                                    sut.resume();
+                                    next(null);
+                                }, 10);
+                                return;
+                            }
                             next(null);
                         });
                     });
                     sut.done((err) => {
-                        expect(err).toBeFalsy();
+                        if (err) {
+                            done(err);
+                            return;
+                        }
                         expect(records).toBeArrayOfSize(batchSize);
                         done();
                     });

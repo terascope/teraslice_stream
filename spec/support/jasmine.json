@@ -3,7 +3,7 @@
   "spec_files": [
     "**/*[sS]pec.js"
   ],
-  "stopOnSpecFailure": true,
+  "stopSpecOnExpectationFailure": false,
   "random": false,
   "helpers": [
     "support/configure_reporter.js",

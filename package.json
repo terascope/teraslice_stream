@@ -4,7 +4,7 @@
   "description": "Functional streams for teraslice",
   "main": "index.js",
   "scripts": {
-    "test": "jasmine"
+    "test": "jasmine --fail-fast=true"
   },
   "keywords": [
     "teraslice",
