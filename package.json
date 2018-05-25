@@ -4,7 +4,7 @@
   "description": "Functional streams for teraslice",
   "main": "index.js",
   "scripts": {
-    "test": "jasmine --fail-fast=true"
+    "test": "jasmine"
   },
   "keywords": [
     "teraslice",
@@ -31,6 +31,7 @@
     "jasmine-spec-reporter": "^4.2.1"
   },
   "dependencies": {
+    "async": "^2.6.1",
     "bluebird": "^3.5.1",
     "highland": "^3.0.0-beta.6",
     "lodash": "^4.17.10",
