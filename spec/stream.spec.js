@@ -19,6 +19,11 @@ describe('Stream', () => {
             sut = fakeStream(batchSize);
         });
 
+        afterEach(() => {
+            sut.destroy();
+            sut = null;
+        });
+
         it('should be a stream', () => {
             expect(isStream(sut)).toBeTrue();
         });
@@ -39,10 +44,12 @@ describe('Stream', () => {
                         return Promise.resolve(msg);
                     });
                 });
-                it('should reject with an error', () => sut.done().catch((err) => {
-                    expect(_.toString(err)).toEqual('Error: Uh oh');
-                    return Promise.resolve();
-                }));
+                it('should reject with an error', (done) => {
+                    sut.done().then(() => done.fail()).catch((err) => {
+                        expect(err.toString()).toEqual('Error: Uh oh');
+                        done();
+                    });
+                });
             });
             it('when successful', async () => {
                 const results = await sut.done();
@@ -104,8 +111,9 @@ describe('Stream', () => {
                 });
 
                 it('should collect half of the items in the batch', () => {
-                    expect(records).toBeArrayOfSize(batchSize / 2);
+                    expect(_.size(records)).toEqual(batchSize / 2);
                 });
+
                 it('should each record should a stream entity', () => {
                     _.each(records, (record) => {
                         expect(record).toEqual(jasmine.any(StreamEntity));
@@ -120,14 +128,14 @@ describe('Stream', () => {
                 expect(isStream(sut.each(_.noop))).toBeTrue();
             });
             describe('when handling errors', () => {
-                it('should the stream should fail', async () => {
+                it('should the stream should fail', (done) => {
                     sut.each(async () => {
                         await setImmediatePromise();
                         return Promise.reject(new Error('Uh oh'));
                     });
-                    return sut.done().catch((err) => {
+                    sut.done().then(() => done.fail()).catch((err) => {
                         expect(err.toString()).toEqual('Error: Uh oh');
-                        return Promise.resolve();
+                        done();
                     });
                 });
             });
@@ -223,10 +231,13 @@ describe('Stream', () => {
                 expect(isStream(sut.map(_.noop))).toBeTrue();
             });
             describe('when handling errors', () => {
-                it('should the stream should fail', () => sut.map(() => Promise.reject(new Error('Uh oh'))).done().catch((err) => {
-                    expect(err.toString()).toEqual('Error: Uh oh');
-                    return Promise.resolve();
-                }));
+                it('should the stream should fail', (done) => {
+                    sut.map(() => Promise.reject(new Error('Uh oh')));
+                    sut.done().then(() => done.fail()).catch((err) => {
+                        expect(err.toString()).toEqual('Error: Uh oh');
+                        done();
+                    });
+                });
             });
             describe('when paused mid-stream', () => {
                 it('should the stream still have the same result count', async () => {
@@ -311,10 +322,12 @@ describe('Stream', () => {
                         return Promise.resolve();
                     });
                 });
-                it('should reject with an error', () => sut.toArray().catch((err) => {
-                    expect(_.toString(err)).toEqual('Error: Uh oh');
-                    return Promise.resolve();
-                }));
+                it('should reject with an error', (done) => {
+                    sut.toArray().then(() => done.fail()).catch((err) => {
+                        expect(err.toString()).toEqual('Error: Uh oh');
+                        done();
+                    });
+                });
             });
             describe('when successful', () => {
                 let records;
