@@ -933,6 +933,10 @@ os-tmpdir@~1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/os-tmpdir/-/os-tmpdir-1.0.2.tgz#bbe67406c79aa85c5cfec766fe5734555dfa1274"
 
+p-break@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/p-break/-/p-break-1.0.0.tgz#89735a5d19d4814ac91e81b8a63ddeecf8bd7a92"
+
 p-limit@^1.1.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/p-limit/-/p-limit-1.2.0.tgz#0e92b6bedcb59f022c13d0f1949dc82d15909f1c"

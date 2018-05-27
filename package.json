@@ -35,6 +35,7 @@
     "bluebird": "^3.5.1",
     "highland": "^3.0.0-beta.6",
     "lodash": "^4.17.10",
+    "p-break": "^1.0.0",
     "uuid": "^3.2.1"
   }
 }
