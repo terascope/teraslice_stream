@@ -937,6 +937,16 @@ p-break@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/p-break/-/p-break-1.0.0.tgz#89735a5d19d4814ac91e81b8a63ddeecf8bd7a92"
 
+p-event@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/p-event/-/p-event-2.0.0.tgz#0efccf409c3b3a9ef5cd078ca39de7d446b43799"
+  dependencies:
+    p-timeout "^2.0.1"
+
+p-finally@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/p-finally/-/p-finally-1.0.0.tgz#3fbcfb15b899a44123b34b6dcc18b724336a2cae"
+
 p-limit@^1.1.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/p-limit/-/p-limit-1.2.0.tgz#0e92b6bedcb59f022c13d0f1949dc82d15909f1c"
@@ -948,6 +958,12 @@ p-locate@^2.0.0:
   resolved "https://registry.yarnpkg.com/p-locate/-/p-locate-2.0.0.tgz#20a0103b222a70c8fd39cc2e580680f3dde5ec43"
   dependencies:
     p-limit "^1.1.0"
+
+p-timeout@^2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/p-timeout/-/p-timeout-2.0.1.tgz#d8dd1979595d2dc0139e1fe46b8b646cb3cdf038"
+  dependencies:
+    p-finally "^1.0.0"
 
 p-try@^1.0.0:
   version "1.0.0"
