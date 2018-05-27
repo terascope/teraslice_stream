@@ -2,34 +2,30 @@
 
 /* eslint-disable no-console */
 
-const Promise = require('bluebird');
+const async = require('async');
+const { promisify } = require('util');
 const _ = require('lodash');
 const UUID = require('uuid');
-const { StreamSource } = require('../');
+const { Stream } = require('../');
 
-const streamSource = new StreamSource();
-const stream = streamSource.toStream();
+const setTimeoutPromise = promisify(setTimeout);
 
 const batchSize = 10000;
-const records = _.times(batchSize);
-Promise.each(records, i => new Promise((resolve, reject) => {
-    _.delay(() => {
-        stream.write({
-            id: UUID.v4(),
-            someKey: 'hello',
-            index: i,
-        }, (err) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-            if (i === 1) {
-                console.log('stream started');
-            }
-            resolve();
-        });
-    }, i * 2);
-}), (err) => {
+const stream = new Stream();
+stream.on('error', (err) => {
+    console.error('GOT ERROR', err);
+});
+async.times(batchSize, async (i) => {
+    await setTimeoutPromise(i * 2);
+    await stream.write({
+        id: UUID.v4(),
+        someKey: 'hello',
+        index: i,
+    });
+    if (i === 1) {
+        console.log('stream started');
+    }
+}, (err) => {
     if (err) {
         console.error(err.stack);
         process.exit(1);
@@ -41,41 +37,33 @@ Promise.each(records, i => new Promise((resolve, reject) => {
 
 let count = 0;
 
-stream.mapAsync((record, next) => {
-    setImmediate(() => {
-        record.data.processedAt = Date.now();
-        next(null, record);
-        if (record.data.index % 101 === 100) {
-            console.log('mapAsync', record.data.index);
-            stream.pause();
-            if (record.data.index > 900) {
-                // here
-            }
-            _.delay(() => {
-                stream.resume();
-            }, 100);
-        }
-    });
+stream.map(async (record) => {
+    setTimeoutPromise(10);
+    record.data.processedAt = Date.now();
+    if (record.data.index % 101 === 100) {
+        console.log('map', record.data.index);
+        stream.pause();
+        _.delay(() => {
+            stream.resume();
+        }, 100);
+    }
+    return record;
 });
 
-stream.eachAsync((record, next) => {
+stream.each(async (record) => {
     let ms = 0;
     if (record.data.index % 101 === 100) {
-        ms = 1000;
-        console.log('eachAsync', record.data.index);
+        ms = 10;
+        console.log('each', record.data.index);
     }
-    _.delay(() => {
-        count += 1;
-        next(null);
-    }, ms);
+    await setTimeoutPromise(ms);
+    count += 1;
 });
 
-stream.done((err) => {
-    if (err) {
-        console.error(err.stack);
-        process.exit(1);
-        return;
-    }
+stream.done().then(() => {
     console.log('done', { count });
     process.exit(0);
+}).catch((err) => {
+    console.error(err.stack);
+    process.exit(1);
 });

@@ -11,7 +11,10 @@ module.exports = function fakeReader(batchSize) {
     async.times(batchSize, async (i) => {
         await setTimeoutPromise(i * 2);
         await stream.write({ ms: i });
-    }, () => {
+    }, (err) => {
+        if (err) {
+            throw err;
+        }
         stream.end();
     });
     return stream;

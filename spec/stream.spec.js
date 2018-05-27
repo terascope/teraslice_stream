@@ -1,6 +1,7 @@
 'use strict';
 
 const _ = require('lodash');
+const Promise = require('bluebird');
 const { promisify } = require('util');
 
 const setImmediatePromise = promisify(setImmediate);
@@ -331,7 +332,7 @@ describe('Stream', () => {
         });
         describe('when successful', () => {
             let records;
-            beforeEach(() => sut.toArray().then((_records) => {
+            beforeEach(() => sut.each(() => {}).toArray().then((_records) => {
                 records = _records;
             }));
 
