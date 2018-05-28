@@ -8,7 +8,7 @@ const setImmediatePromise = promisify(setImmediate);
 const setTimeoutPromise = promisify(setTimeout);
 const fakeStream = require('./lib/fake_stream.js');
 const {
-    StreamEntity, isStream, isStreamEntity
+    Stream, StreamEntity, isStream, isStreamEntity
 } = require('../');
 
 describe('Stream', () => {
@@ -26,6 +26,182 @@ describe('Stream', () => {
 
     it('should be a stream', () => {
         expect(isStream(sut)).toBeTrue();
+    });
+
+    describe('->stats', () => {
+        it('should start with values of zeros', () => {
+            expect(sut.stats()).toEqual({
+                processed: 0,
+                running: 0,
+                pending: 0,
+            });
+        });
+
+        it('should increment with each write', (done) => {
+            const stream = new Stream();
+            const after = _.after(100, () => {
+                stream.end();
+            });
+            _.times(100, (i) => {
+                const count = i + 1;
+                stream.write({ count }).then((result) => {
+                    expect(result).toBeTruthy();
+                    after();
+                }).catch(done.fail);
+            });
+            stream.each(r => r);
+            stream.done().then(() => {
+                expect(stream.stats()).toEqual({
+                    processed: 100,
+                    running: 0,
+                    pending: 0,
+                });
+                done();
+            });
+        });
+    });
+
+    describe('->end', () => {
+        it('should not be ended before it begins', () => {
+            expect(sut.isEnded()).toBeFalse();
+        });
+
+        it('should be ended after writing 100 records', (done) => {
+            const stream = new Stream();
+            stream.resume();
+            const after = _.after(100, () => {
+                stream.end();
+                expect(stream.isEnded()).toBeFalse();
+            });
+            expect(stream.isEnded()).toBeFalse();
+            _.times(100, (i) => {
+                stream.write({ i }).then((result) => {
+                    expect(result).toBeTruthy();
+                    after();
+                }).catch(done.fail);
+            });
+            stream.done().then(() => {
+                expect(stream.isEnded()).toBeTrue();
+                done();
+            }).catch(done.fail);
+        });
+    });
+
+    describe('->pause', () => {
+        it('should be paused before it begins', () => {
+            expect(sut.isPaused()).toBeTrue();
+            sut.write({ i: 1 });
+        });
+
+        it('should be paused after writing 100 records', (done) => {
+            sut.resume();
+            sut.write({ i: 1 }).then((firstResult) => {
+                expect(sut.isPaused()).toBeFalse();
+                expect(firstResult).toBeTruthy();
+            }).then(() => {
+                const after = _.after(99, () => {
+                    sut.pause();
+                    expect(sut.isPaused()).toBeTrue();
+                    done();
+                });
+                _.times(99, (i) => {
+                    sut.write({ i }).then((result) => {
+                        expect(result).toBeTruthy();
+                        after();
+                    }).catch(done.fail);
+                });
+            }).catch(done.fail);
+        });
+
+        it('should be paused after pausing', (done) => {
+            sut.resume();
+            const after = _.after(50, _.once(() => {
+                sut.pause();
+                expect(sut.isPaused()).toBeTrue();
+                done();
+            }));
+            _.times(50, (i) => {
+                sut.write({ i }).then((result) => {
+                    if (i === 1) {
+                        expect(sut.isPaused()).toBeFalse();
+                    }
+                    expect(result).toBeTruthy();
+                    after();
+                }).catch(done.fail);
+            });
+        });
+    });
+
+    describe('->write', () => {
+        describe('when writing null', () => {
+            it('should yield an error', (done) => {
+                sut.write(null).then(done.fail).catch((err) => {
+                    expect(err.message).toEqual('StreamEntity requires data to be any of the following types a Buffer, Object, Array, or String');
+                    done();
+                });
+            });
+        });
+
+        describe('when writing an object', () => {
+            it('should return a stream entity', (done) => {
+                sut.write({ hello: 'hi' }).then((result) => {
+                    expect(isStreamEntity(result)).toBeTrue();
+                    done();
+                }).catch(done.fail);
+            });
+        });
+
+        describe('when writing an string', () => {
+            it('should return a stream entity', (done) => {
+                sut.write('hello').then((result) => {
+                    expect(isStreamEntity(result)).toBeTrue();
+                    done();
+                }).catch(done.fail);
+            });
+        });
+
+        describe('when writing an error', () => {
+            it('should cause the stream to emit an error', (done) => {
+                sut.write('hello').catch(done.fail);
+                setImmediate(() => {
+                    sut.write(new Error('Uh oh'));
+                });
+                sut.done().then(done.fail)
+                    .catch((err) => {
+                        expect(err.message).toEqual('Uh oh');
+                        done();
+                    });
+            });
+        });
+
+        describe('when the stream is paused', () => {
+            it('should write the message', (done) => {
+                sut.write({ hello: 'hi' }).then(() => {
+                    done();
+                }).catch(done.fail);
+            });
+        });
+
+        it('should not fail if given an array of Stream Entity', (done) => {
+            const stream = new Stream();
+            const input = [new StreamEntity({ id: 'hello' }), new StreamEntity({ id: 'hi' })];
+            stream.write(input).catch(done.fail);
+            stream.end();
+            stream.toArray().then((results) => {
+                expect(results[0].toJSON().id).toEqual('hello');
+                expect(results[1].toJSON().id).toEqual('hi');
+                done();
+            }).catch(done.fail);
+            expect(isStream(stream)).toBeTrue();
+        });
+
+        it('should fail if given an array', (done) => {
+            const input = ['hi', 'hello'];
+            sut.write(input).then(done.fail).catch((err) => {
+                expect(err.message).toEqual('Stream->write() requires an array of StreamEntities or data');
+                done();
+            });
+        });
     });
 
     describe('->done', () => {
@@ -62,7 +238,7 @@ describe('Stream', () => {
             expect(isStream(sut.each())).toBeTrue();
         });
 
-        describe('when successful', () => {
+        describe('when doing sync operations', () => {
             const records = [];
 
             beforeEach(() => {
@@ -86,46 +262,6 @@ describe('Stream', () => {
                     expect(isStreamEntity(record)).toBeTrue();
                 });
             });
-        });
-    });
-
-    describe('->filter', () => {
-        it('should return a teraslice stream', () => {
-            expect(isStream(sut.filter(_.noop))).toBeTrue();
-        });
-
-        describe('when successful', () => {
-            const records = [];
-            beforeEach(() => {
-                records.length = 0;
-                let count = 0;
-                return sut.filter(() => {
-                    count += 1;
-                    return count % 2 === 0;
-                }).each((record) => {
-                    records.push(record);
-                }).done();
-            });
-            afterEach(() => {
-                records.length = 0;
-            });
-
-            it('should collect half of the items in the batch', () => {
-                expect(_.size(records)).toEqual(batchSize / 2);
-            });
-
-            it('should each record should a stream entity', () => {
-                _.each(records, (record) => {
-                    expect(record).toEqual(jasmine.any(StreamEntity));
-                    expect(isStreamEntity(record)).toBeTrue();
-                });
-            });
-        });
-    });
-
-    describe('->each async', () => {
-        it('should return a teraslice stream', () => {
-            expect(isStream(sut.each(_.noop))).toBeTrue();
         });
         describe('when handling errors', () => {
             it('should the stream should fail', (done) => {
@@ -185,12 +321,46 @@ describe('Stream', () => {
         }));
     });
 
+    describe('->filter', () => {
+        it('should return a teraslice stream', () => {
+            expect(isStream(sut.filter(_.noop))).toBeTrue();
+        });
+
+        describe('when successful', () => {
+            const records = [];
+            beforeEach(() => {
+                records.length = 0;
+                let count = 0;
+                return sut.filter(() => {
+                    count += 1;
+                    return count % 2 === 0;
+                }).each((record) => {
+                    records.push(record);
+                }).done();
+            });
+            afterEach(() => {
+                records.length = 0;
+            });
+
+            it('should collect half of the items in the batch', () => {
+                expect(_.size(records)).toEqual(batchSize / 2);
+            });
+
+            it('should each record should a stream entity', () => {
+                _.each(records, (record) => {
+                    expect(record).toEqual(jasmine.any(StreamEntity));
+                    expect(isStreamEntity(record)).toBeTrue();
+                });
+            });
+        });
+    });
+
     describe('->map', () => {
         it('should return a teraslice stream', () => {
             expect(isStream(sut.map(_.noop))).toBeTrue();
         });
 
-        describe('when successful', () => {
+        describe('when doing sync operations', () => {
             const records = [];
             beforeEach(() => {
                 records.length = 0;
@@ -224,12 +394,6 @@ describe('Stream', () => {
                 });
             });
         });
-    });
-
-    describe('->map async', () => {
-        it('should return a teraslice stream', () => {
-            expect(isStream(sut.map(_.noop))).toBeTrue();
-        });
         describe('when handling errors', () => {
             it('should the stream should fail', (done) => {
                 sut.map(() => Promise.reject(new Error('Uh oh')));
@@ -259,7 +423,7 @@ describe('Stream', () => {
                 expect(_.size(records)).toEqual(batchSize);
             });
         });
-        describe('when successful', () => {
+        describe('when doing async operations', () => {
             const records = [];
             beforeEach(() => {
                 records.length = 0;
