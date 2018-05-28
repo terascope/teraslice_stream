@@ -5,12 +5,12 @@
 const async = require('async');
 const { promisify } = require('util');
 const _ = require('lodash');
-const UUID = require('uuid');
+const uuidv1 = require('uuid/v1');
 const { Stream } = require('../');
 
 const setTimeoutPromise = promisify(setTimeout);
 
-const batchSize = 100000;
+const batchSize = 30000;
 const stream = new Stream();
 stream.once('ready', () => {
     console.log('AsyncStreamsBenchmark started');
@@ -23,9 +23,9 @@ stream.on('error', (err) => {
     console.error('GOT ERROR', err);
 });
 async.times(batchSize, async (i) => {
-    await setTimeoutPromise(i * 2);
+    await setTimeoutPromise(i);
     await stream.write({
-        id: UUID.v4(),
+        id: uuidv1(),
         someKey: 'hello',
         index: i,
     });
