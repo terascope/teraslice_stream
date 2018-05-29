@@ -2,11 +2,13 @@
 # yarn lockfile v1
 
 
-"@types/highland@^2.10.8":
-  version "2.10.8"
-  resolved "https://registry.yarnpkg.com/@types/highland/-/highland-2.10.8.tgz#c3cab972d88f408e8e81ea3d5c4e1449e5945a84"
-  dependencies:
-    "@types/node" "*"
+"@types/async@^2.0.49":
+  version "2.0.49"
+  resolved "https://registry.yarnpkg.com/@types/async/-/async-2.0.49.tgz#92e33d13f74c895cb9a7f38ba97db8431ed14bc0"
+
+"@types/bluebird@^3.5.20":
+  version "3.5.20"
+  resolved "https://registry.yarnpkg.com/@types/bluebird/-/bluebird-3.5.20.tgz#f6363172add6f4eabb8cada53ca9af2781e8d6a1"
 
 "@types/jasmine-expect@^3.8.1":
   version "3.8.1"
@@ -21,10 +23,6 @@
 "@types/lodash@^4.14.109":
   version "4.14.109"
   resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.109.tgz#b1c4442239730bf35cabaf493c772b18c045886d"
-
-"@types/node@*":
-  version "10.1.2"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-10.1.2.tgz#1b928a0baa408fc8ae3ac012cc81375addc147c6"
 
 acorn-jsx@^3.0.0:
   version "3.0.1"
@@ -634,10 +632,6 @@ has@^1.0.1:
   resolved "https://registry.yarnpkg.com/has/-/has-1.0.1.tgz#8461733f538b0837c9361e39a9ab9e9704dc2f28"
   dependencies:
     function-bind "^1.0.2"
-
-highland@^3.0.0-beta.6:
-  version "3.0.0-beta.6"
-  resolved "https://registry.yarnpkg.com/highland/-/highland-3.0.0-beta.6.tgz#09df0897b16a1e59efa5a909613593568b147743"
 
 hosted-git-info@^2.1.4:
   version "2.6.0"

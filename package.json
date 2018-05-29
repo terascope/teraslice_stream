@@ -17,7 +17,8 @@
   "author": "Peter DeMartini <peter@terascope.io>",
   "license": "MIT",
   "devDependencies": {
-    "@types/highland": "^2.10.8",
+    "@types/async": "^2.0.49",
+    "@types/bluebird": "^3.5.20",
     "@types/jasmine": "^2.8.7",
     "@types/jasmine-expect": "^3.8.1",
     "@types/lodash": "^4.14.109",
@@ -33,7 +34,6 @@
   "dependencies": {
     "async": "^2.6.1",
     "bluebird": "^3.5.1",
-    "highland": "^3.0.0-beta.6",
     "lodash": "^4.17.10",
     "p-break": "^1.0.0",
     "p-event": "^2.0.0",
