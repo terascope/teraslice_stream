@@ -2,10 +2,7 @@
 
 const _ = require('lodash');
 const Promise = require('bluebird');
-const { promisify } = require('util');
 
-const setImmediatePromise = promisify(setImmediate);
-const setTimeoutPromise = promisify(setTimeout);
 const fakeStream = require('./lib/fake_stream.js');
 const {
     Stream, StreamEntity, isStream, isStreamEntity
@@ -57,7 +54,7 @@ describe('Stream', () => {
                     pending: 0,
                 });
                 done();
-            });
+            }).catch(done.fail);
         });
     });
 
@@ -133,10 +130,14 @@ describe('Stream', () => {
     });
 
     describe('->write', () => {
+        it('should return a promise', () => {
+            expect(sut.write({ hello: 'hi' }) instanceof Promise).toBe(true);
+        });
+
         describe('when writing null', () => {
             it('should yield an error', (done) => {
                 sut.write(null).then(done.fail).catch((err) => {
-                    expect(err.message).toEqual('StreamEntity requires data to be any of the following types a Buffer, Object, Array, or String');
+                    expect(err.message).toEqual('Cannot write empty data to stream');
                     done();
                 });
             });
@@ -164,7 +165,7 @@ describe('Stream', () => {
             it('should cause the stream to emit an error', (done) => {
                 sut.write('hello').catch(done.fail);
                 setImmediate(() => {
-                    sut.write(new Error('Uh oh'));
+                    sut.write(new Error('Uh oh')).catch(done.fail);
                 });
                 sut.done().then(done.fail)
                     .catch((err) => {
@@ -182,11 +183,14 @@ describe('Stream', () => {
             });
         });
 
-        it('should not fail if given an array of Stream Entity', (done) => {
+        it('should not fail if given an array of Stream Entities', (done) => {
             const stream = new Stream();
             const input = [new StreamEntity({ id: 'hello' }), new StreamEntity({ id: 'hi' })];
-            stream.write(input).catch(done.fail);
-            stream.end();
+            stream.write(input).catch(done.fail).then((results) => {
+                expect(results[0].toJSON().id).toEqual('hello');
+                expect(results[1].toJSON().id).toEqual('hi');
+                stream.end();
+            });
             stream.toArray().then((results) => {
                 expect(results[0].toJSON().id).toEqual('hello');
                 expect(results[1].toJSON().id).toEqual('hi');
@@ -198,7 +202,7 @@ describe('Stream', () => {
         it('should fail if given an array', (done) => {
             const input = ['hi', 'hello'];
             sut.write(input).then(done.fail).catch((err) => {
-                expect(err.message).toEqual('Stream->write() requires an array of StreamEntities or data');
+                expect(err.message).toEqual('Invalid input to Stream->write()');
                 done();
             });
         });
@@ -227,9 +231,11 @@ describe('Stream', () => {
                 });
             });
         });
-        it('when successful', async () => {
-            const results = await sut.done();
-            expect(results == null).toBe(true);
+        it('when successful', (done) => {
+            sut.done().then((results) => {
+                expect(results == null).toBe(true);
+                done();
+            }).catch(done.fail);
         });
     });
 
@@ -265,10 +271,7 @@ describe('Stream', () => {
         });
         describe('when handling errors', () => {
             it('should the stream should fail', (done) => {
-                sut.each(async () => {
-                    await setImmediatePromise();
-                    return Promise.reject(new Error('Uh oh'));
-                });
+                sut.each(() => Promise.delay(0).then(() => Promise.reject(new Error('Uh oh'))));
                 sut.done().then(() => done.fail()).catch((err) => {
                     expect(err.toString()).toEqual('Error: Uh oh');
                     done();
@@ -276,30 +279,32 @@ describe('Stream', () => {
             });
         });
         describe('when paused mid-stream', () => {
-            it('should the stream still have the same result count', async () => {
+            it('should the stream still have the same result count', (done) => {
                 const records = [];
-                sut.each(async (record) => {
+                sut.each((record) => {
                     expect(sut.isPaused()).toBeFalsy();
                     records.push(record);
-                    await setImmediatePromise();
-                    if (_.size(records) === 10) {
-                        sut.pause();
-                        await setTimeoutPromise(10);
-                        sut.resume();
-                    }
+                    return Promise.delay(0).then(() => {
+                        if (_.size(records) === 10) {
+                            sut.pause();
+                            return Promise.delay(10).then(() => sut.resume());
+                        }
+                        return Promise.resolve();
+                    });
                 });
-                await sut.done();
-                expect(_.size(records)).toEqual(batchSize);
+                sut.done().then(() => {
+                    expect(_.size(records)).toEqual(batchSize);
+                    done();
+                }).catch(done.fail);
             }, 5000);
         });
         describe('when successful', () => {
             const records = [];
             beforeEach(() => {
                 records.length = 0;
-                sut.each(async (record) => {
-                    await setImmediatePromise();
+                sut.each(record => Promise.delay(0).then(() => {
                     records.push(record);
-                });
+                }));
                 return sut.done();
             });
 
@@ -314,9 +319,9 @@ describe('Stream', () => {
             });
         });
 
-        it('should work when chained with done', () => sut.each(() => setImmediatePromise()).done());
+        it('should work when chained with done', () => sut.each(() => Promise.delay(0)).done());
 
-        it('should work when chained with toArray', () => sut.each(() => setImmediatePromise()).toArray((results) => {
+        it('should work when chained with toArray', () => sut.each(() => Promise.delay(0)).toArray((results) => {
             expect(results).toBeArrayOfSize(0);
         }));
     });
@@ -404,7 +409,7 @@ describe('Stream', () => {
             });
         });
         describe('when paused mid-stream', () => {
-            it('should the stream still have the same result count', async () => {
+            it('should the stream still have the same result count', (done) => {
                 const pauseAfter = _.after(_.random(1, batchSize), _.once(() => {
                     sut.pause();
                     _.delay(() => {
@@ -413,25 +418,26 @@ describe('Stream', () => {
                 }));
                 const records = [];
                 expect(sut.isPaused()).toBeTruthy();
-                sut.map(async (record) => {
+                sut.map((record) => {
                     records.push(record);
                     pauseAfter();
                     return record;
                 });
-                await sut.done();
-                expect(sut.isPaused()).toBeFalsy();
-                expect(_.size(records)).toEqual(batchSize);
+                sut.done().then(() => {
+                    expect(sut.isPaused()).toBeFalsy();
+                    expect(_.size(records)).toEqual(batchSize);
+                    done();
+                }).catch(done.fail);
             });
         });
         describe('when doing async operations', () => {
             const records = [];
             beforeEach(() => {
                 records.length = 0;
-                sut.map(async (record) => {
-                    await setImmediatePromise();
+                sut.map(record => Promise.delay(0).then(() => {
                     record.processed = true;
                     return record;
-                });
+                }));
                 sut.each((record) => {
                     records.push(record);
                 });
@@ -455,20 +461,11 @@ describe('Stream', () => {
                 });
             });
         });
-        it('should work when chained with done', async () => {
-            sut.map(async (record) => {
-                await setImmediatePromise();
-                return record;
-            }).done();
-        });
+        it('should work when chained with done', () => sut.map(record => Promise.delay(0).then(() => record)).done());
 
-        it('should work when chained with toArray', async () => {
-            const results = await sut.map(async (record) => {
-                await setImmediatePromise();
-                return record;
-            }).toArray();
+        it('should work when chained with toArray', () => sut.map(record => Promise.delay(0).then(() => record)).toArray().then((results) => {
             expect(results).toBeArrayOfSize(batchSize);
-        });
+        }));
     });
 
     describe('->toArray', () => {

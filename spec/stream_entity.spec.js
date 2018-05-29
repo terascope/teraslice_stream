@@ -14,6 +14,22 @@ describe('StreamEntity', () => {
         expect(() => new StreamEntity(null)).toThrowError();
     });
 
+    it('should throw an error if given an array', () => {
+        expect(() => new StreamEntity(['hello', 'hello'])).toThrowError();
+    });
+
+    it('should not validate input if given an array', () => {
+        expect(StreamEntity.validateInput(['hello', 'hello'])).toBeFalse();
+    });
+
+    describe('when given a stream entity', () => {
+        it('should return the input stream entity', () => {
+            const input = new StreamEntity('hello');
+            const result = new StreamEntity(input);
+            expect(result).toEqual(input);
+        });
+    });
+
     describe('when data is a buffer', () => {
         beforeEach(() => {
             sut = new StreamEntity(buf);
